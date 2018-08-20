@@ -1,0 +1,4 @@
+For remix
+"albuterol sulfate", "2mg/5ml","syrup", "120ml", "", "MO", 0x895ae68111da9323632e783671b451c867378155, 11.17
+
+"albuterol sulfate", "0x326d672f356d6c","0x7379727570", "0x3132306d6c", "0x00", "0x4d4f", 0x895ae68111da9323632e783671b451c867378155, 1117

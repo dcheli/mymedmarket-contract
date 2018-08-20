@@ -113,10 +113,36 @@ contract MyMedMarket {
         return(consumerScripts[consumer].length);
     }
     
-    function getConsumerScript(address consumer, uint index) public view
-        returns(bytes32 scriptId, ScriptStatus status, uint price, string drugName) {
+    function getConsumerScript(address consumer, uint index ) public view
+        returns(bytes32 scriptId, ScriptStatus status, uint price, string drugName,
+        bytes16 drugStrength,  bytes16 drugForm, bytes16 drugQuantity, uint dateAdded) {
             bytes32 id = consumerScripts[consumer][index];
             Script memory script = allScripts[id];
-            return(script.scriptId, script.status, script.price, script.drug.drugName);
-    }   
+            return(script.scriptId, script.status, script.price, script.drug.drugName,
+                script.drug.drugStrength,  script.drug.drugForm, script.drug.drugQuantity, script.dateAdded);
+    } 
+    
+    function cancelScript(address consumer, bytes32 scriptId ) public {
+        Script storage script = allScripts[scriptId];
+        
+        require(script.owner == consumer);
+        script.status = ScriptStatus.Cancelled;
+        script.lastUpdateTime = block.timestamp;
+        // remove from marketplace
+        removeFromMarketPlace(scriptId);
+    }
+    
+    
+    function removeFromMarketPlace(bytes32 scriptId) private {
+        
+        for(uint i = 0; i < marketPlaceScripts.length; i++) {
+            if(marketPlaceScripts[i] == scriptId) {
+                if(i != marketPlaceScripts.length - 1) {
+                    marketPlaceScripts[i] = marketPlaceScripts[marketPlaceScripts.length - 1];
+                }
+                marketPlaceScripts.length--;
+                break;
+            }
+        }
+    }
 }
