@@ -101,12 +101,17 @@ contract MyMedMarket {
         marketPlaceScripts.push(scriptId);
         emit ScriptAdded(owner, scriptId, state);
     }
+    function getMarketPlaceScriptCount() public view returns (uint count) {
+        return(marketPlaceScripts.length);
+    }
     
     function getMarketPlaceScript(uint index) public view 
-        returns(bytes32 scriptId, ScriptStatus status, uint price, string drugName) {
+        returns(bytes32 scriptId, ScriptStatus status, uint price, string drugName,
+        bytes16 drugStrength,  bytes16 drugForm, bytes16 drugQuantity, uint dateAdded, bytes2 state) {
             bytes32 id = marketPlaceScripts[index];
             Script memory script = allScripts[id];
-            return(script.scriptId, script.status, script.price, script.drug.drugName);
+           return(script.scriptId, script.status, script.price, script.drug.drugName,
+            script.drug.drugStrength, script.drug.drugForm, script.drug.drugQuantity, script.dateAdded, script.state);
     }
 
     function getConsumerScriptsCount(address consumer) public view returns(uint count) {
@@ -119,8 +124,20 @@ contract MyMedMarket {
             bytes32 id = consumerScripts[consumer][index];
             Script memory script = allScripts[id];
             return(script.scriptId, script.status, script.price, script.drug.drugName,
-                script.drug.drugStrength,  script.drug.drugForm, script.drug.drugQuantity, script.dateAdded);
+            script.drug.drugStrength, script.drug.drugForm, script.drug.drugQuantity, script.dateAdded);
     } 
+    
+    function getPharmacyScriptCount() view public returns (uint) {
+        return pharmacyScripts[msg.sender].length;
+    }
+
+   function getPharmacyScript(uint index) public view returns(bytes32 scriptId, ScriptStatus status, uint price, string drugName,
+        bytes16 drugStrength,  bytes16 drugForm, bytes16 drugQuantity, uint dateAddedl) {
+        bytes32 id = pharmacyScripts[msg.sender][index];
+        Script memory script = allScripts[id];
+        return(script.scriptId, script.status, script.price, script.drug.drugName,
+            script.drug.drugStrength, script.drug.drugForm, script.drug.drugQuantity, script.dateAdded);
+    }
     
     function cancelScript(address consumer, bytes32 scriptId ) public {
         Script storage script = allScripts[scriptId];
@@ -131,6 +148,80 @@ contract MyMedMarket {
         // remove from marketplace
         removeFromMarketPlace(scriptId);
     }
+    
+    function claimScript(address pharmacy, bytes32 scriptId) public {
+        Script storage script = allScripts[scriptId];
+        require(script.status == ScriptStatus.Authorized);
+        
+        script.status = ScriptStatus.Claimed;
+        script.pharmacy = pharmacy;
+        pharmacyScripts[pharmacy].push(scriptId);
+        removeFromMarketPlace(scriptId);
+        emit ScriptClaimed(scriptId, pharmacy);
+        
+    }
+    
+    function releaseScript(address pharmacy, bytes32 scriptId) public {
+        Script storage script = allScripts[scriptId];
+        require(script.status == ScriptStatus.Claimed);
+        script.status = ScriptStatus.Authorized;
+        
+        // need to remove from the pharmacyScripts array
+        for(uint i = 0; i < pharmacyScripts[pharmacy].length; i++) {
+            if(pharmacyScripts[pharmacy][i] == scriptId) {
+                if (i != pharmacyScripts[pharmacy].length - 1) {
+                    pharmacyScripts[pharmacy][i] = pharmacyScripts[pharmacy][pharmacyScripts[pharmacy].length -1];
+                }
+                pharmacyScripts[pharmacy].length--;
+                emit ScriptAdded(script.owner, scriptId, script.state);
+                break;
+            }
+        }
+    }
+
+
+    function counterScript(address pharmacy, bytes32 scriptId, uint price) public {
+        bool pharmacyExists = false;
+        Script storage script = allScripts[scriptId];
+        require(script.status == ScriptStatus.Authorized || script.status == ScriptStatus.Countered);
+        script.status = ScriptStatus.Countered;
+        
+        Counter memory counter = Counter({
+           scriptId: scriptId,
+           price: price,
+           expireTime: block.timestamp + 86400
+        });
+        
+        script.priceCounterOffersCount++;
+        script.priceCounterOffers[pharmacy] = counter;
+        for(uint8 i = 0; i < script.pharmacyCounterOffers.length; i++) {
+            if(script.pharmacyCounterOffers[i] == pharmacy)
+                pharmacyExists = true;
+        }
+        if(!pharmacyExists)
+            script.pharmacyCounterOffers.push(pharmacy);
+        script.lastUpdateTime = block.timestamp;
+    }
+    
+    
+    
+    function approveCounter(address pharmacy, bytes32 scriptId ) public payable {
+        // 1. pass in the winning scriptId and pharmacy address
+        // 2. retrieve the counter from the script
+        Script storage script = allScripts[scriptId];
+
+        // 3. update the script.price with the winning price
+        script.price = script.priceCounterOffers[pharmacy].price;
+
+        // 4. marked the script as Claimed and indicate the pharmacy address
+        
+        script.status = ScriptStatus.Claimed;
+
+        // 5. Give to the winning pharmacy and remove from market
+        pharmacyScripts[pharmacy].push(scriptId);
+        removeFromMarketPlace(scriptId);
+    }
+    
     
     
     function removeFromMarketPlace(bytes32 scriptId) private {

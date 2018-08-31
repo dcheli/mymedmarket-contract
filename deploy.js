@@ -18,7 +18,7 @@ const provider = new HDWalletProvider(
 
     const result = await new web3.eth.Contract(JSON.parse(compiledMyMedMarket.interface))
         .deploy({data: '0x' + compiledMyMedMarket.bytecode })
-        .send({ gas: '4000000', from: accounts[0], gasPrice: '7000000000' });
+        .send({ gas: '5000000', from: accounts[0], gasPrice: '7000000000' });
 
         console.log("Address of contract is", result.options.address )
         //console.log("Be sure to include the address of the contract in your ethereuem/scriptHub.js file");      
