@@ -196,7 +196,7 @@ contract MyMedMarket {
         address pharmacyAddr = script.pharmacyCounterOffers[index];
         return(
             script.priceCounterOffers[pharmacyAddr].scriptId,
-            pharmacy,
+            pharmacyAddr,
             script.priceCounterOffers[pharmacyAddr].price,
             script.priceCounterOffers[pharmacyAddr].expireTime
         );
