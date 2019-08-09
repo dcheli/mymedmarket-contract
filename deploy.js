@@ -1,27 +1,56 @@
-const HDWalletProvider = require('truffle-hdwallet-provider');
 const Web3 = require('web3');
+const Tx = require('ethereumjs-tx');
+
+
+const options = {
+  defaultAccount: '0xcaa482cdf28f1f06a59082f2289cbbb24e97b0fb',
+  defaultBlock: 'latest',
+  defaultGas: 1,
+  defaultGasPrice: 0,
+  transactionBlockTimeout: 50,
+  transactionConfirmationBlocks: 2, // 24
+  transactionPollingTimeout: 480
+}
+const web3 = new Web3('https://rinkeby.infura.io/v3/f4d34a220a7b44e7a7d80d7db1e3a034', null, options);
+const privateKey1 =  Buffer.from('7B65F33CDDD7B26F29B7D247E865723981130723E8E659C0F8E0AD2050D0E8A4', 'hex'); // add your private key
+
 const compiledMyMedMarket = require('./build/MyMedMarket.json');
+const account = web3.eth.defaultAccount;
 
-const provider = new HDWalletProvider(
-    'blast chuckle twice police mountain uniform large slush artist seed evoke path',
-    'https://rinkeby.infura.io/keHmED2MU9S8HnwbzGgG'
-  );
-  const web3 = new Web3(provider);
+// Deploy the contract
 
-  const deploy = async () => {
-    const accounts = await web3.eth.getAccounts();
-    const count = await web3.eth.getTransactionCount(accounts[0]);
-      
-    console.log("getTransactionCount returns ", count);
-    console.log('Attempting to deploy from account ', accounts[0]);
-    console.log('Accounts contains ', accounts);
+web3.eth.getTransactionCount(account, (err, txCount) => {
+  const data = '0x' + compiledMyMedMarket.evm.bytecode.object;
 
-    const result = await new web3.eth.Contract(JSON.parse(compiledMyMedMarket.interface))
-        .deploy({data: '0x' + compiledMyMedMarket.bytecode })
-        .send({ gas: '5000000', from: accounts[0], gasPrice: '7000000000' });
+  const txObject = {
+    nonce:    web3.utils.toHex(txCount),
+    gasLimit: web3.utils.toHex(5000000), // Raise the gas limit to a much higher amount
+    gasPrice: web3.utils.toHex(web3.utils.toWei('10', 'gwei')),
+    data: data
+  }
 
-        console.log("Address of contract is", result.options.address )
-        //console.log("Be sure to include the address of the contract in your ethereuem/scriptHub.js file");      
-  };
+  const tx = new Tx(txObject)
+  tx.sign(privateKey1)
 
-  deploy().catch((error) => {console.log("Error in deploy: ", error)});
+  const serializedTx = tx.serialize()
+  const raw = '0x' + serializedTx.toString('hex')
+
+
+
+  console.log("Deploying contract");
+  web3.eth.sendSignedTransaction(raw)
+  .on('error', function(error){ 
+      console.log("An error occurred deploying contract ", error);
+      console.log("Error message is ", error.message)})
+  .then(function(receipt){
+      console.log("Contract deployed successfully")
+      console.log('Receipt is: ', receipt);
+      console.log("Contract address is ", receipt.contractAddress);
+  });
+/*
+  web3.eth.sendSignedTransaction(raw, (err, txHash) => {
+    console.log('err:', err, 'txHash:', txHash)
+    // Use this txHash to find the contract on Etherscan!
+  })
+  */
+});

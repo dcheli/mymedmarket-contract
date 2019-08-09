@@ -1,4 +1,4 @@
-pragma solidity ^0.4.24;
+pragma solidity ^0.5.0;
 
 contract MyMedMarket {
     address owner;
@@ -36,7 +36,7 @@ contract MyMedMarket {
         
     }
     
-    mapping (bytes32 => Script) public allScripts;      // where all scripts exist
+    mapping (bytes32 => Script) allScripts;      // where all scripts exist
     uint public allScriptsCount;
     bytes32[] public marketPlaceScripts;                // where unclaimed scripts exist
     
@@ -52,16 +52,16 @@ contract MyMedMarket {
         allScriptsCount = 0;
     }
     
-    function addScript(string drugName, bytes16 drugStrength, bytes16 drugForm, 
+    function addScript(string  memory drugName, bytes16 drugStrength, bytes16 drugForm, 
                     bytes16 drugQuantity, bytes32 therapyClass, bytes2 state, 
                     address consumer, uint price ) public {
                         
-        require(//keccak256(drugName) != keccak256("") &&
-                drugStrength != 0 &&
-                drugForm != 0 &&
-                drugQuantity != 0 &&
-                state != 0 &&
-                consumer != 0 );
+        require(
+               // drugStrength != bytes16(0) &&
+               // drugForm != bytes16(0) &&
+               // drugQuantity != bytes16(0) &&
+               // state != bytes2(0) &&
+                address(consumer) != address(0), "error in require" );
                 
         bytes32 scriptId = keccak256(
              abi.encodePacked(drugName, now, consumer));
@@ -84,8 +84,8 @@ contract MyMedMarket {
             priceCounterOffersCount: 0,
             //priceCounterOffers;
             pharmacyCounterOffers: new address[](0),
-            pharmacy: 0,
-            prescriber:0,
+            pharmacy: address(0),
+            prescriber:address(0),
             dateAdded: block.timestamp,
             lastUpdateTime: block.timestamp
         });
@@ -99,14 +99,17 @@ contract MyMedMarket {
         
         // add to the marketPlaceScripts array
         marketPlaceScripts.push(scriptId);
+        
         emit ScriptAdded(owner, scriptId, state);
+    
     }
+
     function getMarketPlaceScriptCount() public view returns (uint count) {
         return(marketPlaceScripts.length);
     }
     
     function getMarketPlaceScript(uint index) public view 
-        returns(bytes32 scriptId, ScriptStatus status, uint price, string drugName,
+        returns(bytes32 scriptId, ScriptStatus status, uint price, string memory drugName,
         bytes16 drugStrength,  bytes16 drugForm, bytes16 drugQuantity, uint dateAdded, bytes2 state) {
             bytes32 id = marketPlaceScripts[index];
             Script memory script = allScripts[id];
@@ -119,7 +122,7 @@ contract MyMedMarket {
     }
     
     function getConsumerScript(address consumer, uint index ) public view
-        returns(bytes32 scriptId, ScriptStatus status, uint price, string drugName,
+        returns(bytes32 scriptId, ScriptStatus status, uint price, string memory drugName,
         bytes16 drugStrength,  bytes16 drugForm, bytes16 drugQuantity, uint8 priceCounterOffersCount,uint dateAdded) {
             bytes32 id = consumerScripts[consumer][index];
             Script memory script = allScripts[id];
@@ -132,7 +135,7 @@ contract MyMedMarket {
         return pharmacyScripts[pharmacy].length;
     }
 
-   function getPharmacyScript(address pharmacy, uint index) public view returns(bytes32 scriptId, ScriptStatus status, uint price, string drugName,
+   function getPharmacyScript(address pharmacy, uint index) public view returns(bytes32 scriptId, ScriptStatus status, uint price, string memory drugName,
         bytes16 drugStrength,  bytes16 drugForm, bytes16 drugQuantity, uint dateAdded) {
         bytes32 id = pharmacyScripts[pharmacy][index];
         Script memory script = allScripts[id];
@@ -143,7 +146,7 @@ contract MyMedMarket {
     function cancelScript(address consumer, bytes32 scriptId ) public {
         Script storage script = allScripts[scriptId];
         
-        require(script.owner == consumer);
+        require(address(script.owner) == address(consumer));
         require(script.status == ScriptStatus.Authorized ||
             script.status == ScriptStatus.Countered);
         
