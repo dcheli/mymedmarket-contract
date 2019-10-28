@@ -5,21 +5,20 @@ contract MyMedMarket {
     
     enum ScriptStatus{ Authorized, Cancelled, Claimed, Countered, Released, Completed }
     
-    struct Drug {
-        string drugName;
-        bytes16 drugStrength;
-        bytes16 drugForm;
-        bytes16 drugQuantity;
+   struct Compound {
+        string formula;
+        bytes32 quantity;
+        bytes32 form;
         bytes32 therapyClass;
     }
-    
+
     struct Script {
         bytes32 scriptId;                   // keccak hash of drugName + now + scriptOwner address
         address owner;                      // owner of the script i.e. the consumer
         ScriptStatus status;
-        Drug drug;
+        Compound compound;
         uint price;                         // in pennies;this intitially represents the estimated market price, but changes to represent the final price
-        bytes2 state;
+        bytes32 state;
         uint8 priceCounterOffersCount;
         mapping (address => Counter) priceCounterOffers;
         address[] pharmacyCounterOffers;    // this holds the address of pharmacies that submitted counter offers
@@ -32,8 +31,7 @@ contract MyMedMarket {
     struct Counter {
         bytes32 scriptId;
         uint price;
-        uint expireTime;
-        
+        uint expireTime;    
     }
     
     mapping (bytes32 => Script) allScripts;      // where all scripts exist
@@ -43,7 +41,7 @@ contract MyMedMarket {
     mapping (address => bytes32[]) pharmacyScripts;
     mapping (address => bytes32[]) consumerScripts;
 
-    event ScriptAdded(address indexed _owner, bytes32 indexed _scriptId, bytes2 indexed _state);
+    event ScriptAdded(address indexed _owner, bytes32 indexed _scriptId, bytes32 indexed _state);
     event ScriptClaimed(bytes32 indexed _scriptId, address indexed _pharmacy);
     event ScriptCountered(bytes32 indexed _scriptId, address indexed _consumer);
     
@@ -52,25 +50,21 @@ contract MyMedMarket {
         allScriptsCount = 0;
     }
     
-    function addScript(string  memory drugName, bytes16 drugStrength, bytes16 drugForm, 
-                    bytes16 drugQuantity, bytes32 therapyClass, bytes2 state, 
+    function addScript(string  memory formula,  bytes32 form, 
+                    bytes32 quantity, bytes32 therapyClass, bytes32 state, 
                     address consumer, uint price ) public {
-                        
-        require(
-               // drugStrength != bytes16(0) &&
-               // drugForm != bytes16(0) &&
-               // drugQuantity != bytes16(0) &&
-               // state != bytes2(0) &&
-                address(consumer) != address(0), "error in require" );
+        require(form != bytes32(0), "Form is required.");
+        require(quantity != bytes32(0), "Quantity is required.");
+        require(state != bytes32(0), "State is required.");
+        require(address(consumer) != address(0), "Consumer address is required.");
                 
         bytes32 scriptId = keccak256(
-             abi.encodePacked(drugName, now, consumer));
+             abi.encodePacked(formula, now, consumer));
         
-        Drug memory drug = Drug({
-            drugName: drugName,
-            drugStrength: drugStrength,
-            drugForm: drugForm,
-            drugQuantity: drugQuantity,
+        Compound memory compound = Compound({
+            formula: formula,
+            form: form,
+            quantity: quantity,
             therapyClass: therapyClass
         });
         
@@ -78,7 +72,7 @@ contract MyMedMarket {
             scriptId: scriptId,
             owner: consumer,
             status: ScriptStatus.Authorized,
-            drug: drug,
+            compound: compound,
             price: price,
             state: state,
             priceCounterOffersCount: 0,
@@ -101,7 +95,6 @@ contract MyMedMarket {
         marketPlaceScripts.push(scriptId);
         
         emit ScriptAdded(owner, scriptId, state);
-    
     }
 
     function getMarketPlaceScriptCount() public view returns (uint count) {
@@ -109,12 +102,12 @@ contract MyMedMarket {
     }
     
     function getMarketPlaceScript(uint index) public view 
-        returns(bytes32 scriptId, ScriptStatus status, uint price, string memory drugName,
-        bytes16 drugStrength,  bytes16 drugForm, bytes16 drugQuantity, uint dateAdded, bytes2 state) {
+        returns(bytes32 scriptId, ScriptStatus status, uint price, string memory formula,
+        bytes32 form, bytes32 quantity, uint dateAdded, bytes32 state) {
             bytes32 id = marketPlaceScripts[index];
             Script memory script = allScripts[id];
-           return(script.scriptId, script.status, script.price, script.drug.drugName,
-            script.drug.drugStrength, script.drug.drugForm, script.drug.drugQuantity, script.dateAdded, script.state);
+           return(script.scriptId, script.status, script.price, script.compound.formula,
+            script.compound.form, script.compound.quantity, script.dateAdded, script.state);
     }
 
     function getConsumerScriptsCount(address consumer) public view returns(uint count) {
@@ -122,12 +115,12 @@ contract MyMedMarket {
     }
     
     function getConsumerScript(address consumer, uint index ) public view
-        returns(bytes32 scriptId, ScriptStatus status, uint price, string memory drugName,
-        bytes16 drugStrength,  bytes16 drugForm, bytes16 drugQuantity, uint8 priceCounterOffersCount,uint dateAdded) {
+        returns(bytes32 scriptId, ScriptStatus status, uint price, string memory formula,
+        bytes32 form, bytes32 quantity, uint8 priceCounterOffersCount,uint dateAdded) {
             bytes32 id = consumerScripts[consumer][index];
             Script memory script = allScripts[id];
-            return(script.scriptId, script.status, script.price, script.drug.drugName,
-            script.drug.drugStrength, script.drug.drugForm, script.drug.drugQuantity, 
+            return(script.scriptId, script.status, script.price, script.compound.formula,
+            script.compound.form, script.compound.quantity, 
             script.priceCounterOffersCount, script.dateAdded);
     } 
     
@@ -135,12 +128,13 @@ contract MyMedMarket {
         return pharmacyScripts[pharmacy].length;
     }
 
-   function getPharmacyScript(address pharmacy, uint index) public view returns(bytes32 scriptId, ScriptStatus status, uint price, string memory drugName,
-        bytes16 drugStrength,  bytes16 drugForm, bytes16 drugQuantity, uint dateAdded) {
-        bytes32 id = pharmacyScripts[pharmacy][index];
-        Script memory script = allScripts[id];
-        return(script.scriptId, script.status, script.price, script.drug.drugName,
-            script.drug.drugStrength, script.drug.drugForm, script.drug.drugQuantity, script.dateAdded);
+   function getPharmacyScript(address pharmacy, uint index) public view returns(bytes32 scriptId, 
+            ScriptStatus status, uint price,  string memory formula,
+            bytes32 form, bytes32 quantity, uint dateAdded) {
+                bytes32 id = pharmacyScripts[pharmacy][index];
+                Script memory script = allScripts[id];
+                return(script.scriptId, script.status, script.price, script.compound.formula,
+                    script.compound.form, script.compound.quantity, script.dateAdded);
     }
     
     function cancelScript(address consumer, bytes32 scriptId ) public {
