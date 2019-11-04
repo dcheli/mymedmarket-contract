@@ -33,7 +33,8 @@ contract MyMedMarket {
         uint price;
         uint expireTime;    
     }
-    
+    uint private adminFee = 500; // expressed in pennies
+
     mapping (bytes32 => Script) allScripts;      // where all scripts exist
     uint public allScriptsCount;
     bytes32[] public marketPlaceScripts;                // where unclaimed scripts exist
@@ -60,6 +61,7 @@ contract MyMedMarket {
                 
         bytes32 scriptId = keccak256(
              abi.encodePacked(formula, now, consumer));
+        uint priceLessAdminFee = price - adminFee;
         
         Compound memory compound = Compound({
             formula: formula,
@@ -73,7 +75,7 @@ contract MyMedMarket {
             owner: consumer,
             status: ScriptStatus.Authorized,
             compound: compound,
-            price: price,
+            price: priceLessAdminFee,
             state: state,
             priceCounterOffersCount: 0,
             //priceCounterOffers;
@@ -100,12 +102,13 @@ contract MyMedMarket {
     function getMarketPlaceScriptCount() public view returns (uint count) {
         return(marketPlaceScripts.length);
     }
-    
+    // pharmacy would utilize this
     function getMarketPlaceScript(uint index) public view 
         returns(bytes32 scriptId, ScriptStatus status, uint price, string memory formula,
         bytes32 form, bytes32 quantity, uint dateAdded, bytes32 state) {
             bytes32 id = marketPlaceScripts[index];
             Script memory script = allScripts[id];
+
            return(script.scriptId, script.status, script.price, script.compound.formula,
             script.compound.form, script.compound.quantity, script.dateAdded, script.state);
     }
@@ -118,8 +121,10 @@ contract MyMedMarket {
         returns(bytes32 scriptId, ScriptStatus status, uint price, string memory formula,
         bytes32 form, bytes32 quantity, uint8 priceCounterOffersCount,uint dateAdded) {
             bytes32 id = consumerScripts[consumer][index];
+            
             Script memory script = allScripts[id];
-            return(script.scriptId, script.status, script.price, script.compound.formula,
+            uint pricePlusAdminFee = script.price + adminFee;
+            return(script.scriptId, script.status, pricePlusAdminFee, script.compound.formula,
             script.compound.form, script.compound.quantity, 
             script.priceCounterOffersCount, script.dateAdded);
     } 
@@ -133,6 +138,7 @@ contract MyMedMarket {
             bytes32 form, bytes32 quantity, uint dateAdded) {
                 bytes32 id = pharmacyScripts[pharmacy][index];
                 Script memory script = allScripts[id];
+                
                 return(script.scriptId, script.status, script.price, script.compound.formula,
                     script.compound.form, script.compound.quantity, script.dateAdded);
     }
@@ -187,14 +193,16 @@ contract MyMedMarket {
         Script storage script = allScripts[scriptId];
         return script.priceCounterOffersCount;
     }
-    
+    // consumer sees this
     function getPriceCounter(bytes32 scriptid, uint index) public view returns(bytes32 scriptId, address pharmacy, uint price, uint expireTime) {
         Script storage script = allScripts[scriptid];
+       
         address pharmacyAddr = script.pharmacyCounterOffers[index];
+        uint pricePlusAdminFee = script.priceCounterOffers[pharmacyAddr].price + adminFee;
         return(
             script.priceCounterOffers[pharmacyAddr].scriptId,
             pharmacyAddr,
-            script.priceCounterOffers[pharmacyAddr].price,
+            pricePlusAdminFee,
             script.priceCounterOffers[pharmacyAddr].expireTime
         );
     }
@@ -244,7 +252,7 @@ contract MyMedMarket {
     
     function completeScript(address pharmacy, bytes32 scriptId) public {
         Script storage script = allScripts[scriptId];
-        require(script.pharmacy == pharmacy);
+        require(script.pharmacy == pharmacy, "Failed on pharmacy check.");
         
         script.status = ScriptStatus.Completed;
     }
