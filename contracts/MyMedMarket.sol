@@ -8,6 +8,7 @@ contract MyMedMarket {
    struct Compound {
         string formula;
         bytes32 quantity;
+        bytes32 daySupply;
         bytes32 form;
         bytes32 therapyClass;
     }
@@ -67,6 +68,7 @@ contract MyMedMarket {
             formula: formula,
             form: form,
             quantity: quantity,
+            daySupply: '',
             therapyClass: therapyClass
         });
         
@@ -99,6 +101,71 @@ contract MyMedMarket {
         emit ScriptAdded(owner, scriptId, state);
     }
 
+
+    // Things to do
+    // Add pharmacy Address
+    // change quantity  to uint256 and rename daySupply
+    // change therayClass to string
+    // change 
+   function sendScript(string  memory formula,  bytes32 form, 
+                    bytes32 daySupply, bytes32 therapyClass, bytes32 state, 
+                    address consumer, uint price, address pharmacy ) public {
+        require(form != bytes32(0), "Form is required.");
+        require(daySupply != bytes32(0), "Quantity is required.");
+        require(state != bytes32(0), "State is required.");
+        require(address(consumer) != address(0), "Consumer address is required.");
+        
+        // What this needs to do is to add the script to the designated pharmacy Rx queue
+
+        bytes32 scriptId = keccak256(
+             abi.encodePacked(formula, now, consumer));        
+        Compound memory compound = Compound({
+            formula: formula,
+            form: form,
+            quantity: 0,
+            daySupply: daySupply,
+            therapyClass: therapyClass
+        });
+        
+        Script memory script = Script({
+            scriptId: scriptId,
+            owner: consumer,
+            status: ScriptStatus.Claimed,
+            compound: compound,
+            price: price,
+            state: state,
+            priceCounterOffersCount: 0,
+            //priceCounterOffers;
+            pharmacyCounterOffers: new address[](0),
+            pharmacy:pharmacy,
+            prescriber:address(0),
+            dateAdded: block.timestamp,
+            lastUpdateTime: block.timestamp
+        });
+
+        // add script to the Pharmacies mapping
+        script.status = ScriptStatus.Claimed;
+        script.pharmacy = pharmacy;
+        pharmacyScripts[pharmacy].push(scriptId);
+        removeFromMarketPlace(scriptId);
+        emit ScriptClaimed(scriptId, pharmacy);
+
+
+        // add to the allScripts mapping
+        allScripts[scriptId] = script;
+        allScriptsCount++;
+
+        // add to the consumers storage
+        consumerScripts[consumer].push(scriptId);
+        
+        // add to the marketPlaceScripts array
+        marketPlaceScripts.push(scriptId);
+        
+        emit ScriptAdded(owner, scriptId, state);     
+    }
+
+
+
     function getMarketPlaceScriptCount() public view returns (uint count) {
         return(marketPlaceScripts.length);
     }
@@ -119,13 +186,12 @@ contract MyMedMarket {
     
     function getConsumerScript(address consumer, uint index ) public view
         returns(bytes32 scriptId, ScriptStatus status, uint price, string memory formula,
-        bytes32 form, bytes32 quantity, uint8 priceCounterOffersCount,uint dateAdded) {
+        bytes32 form, bytes32 daySupply, uint8 priceCounterOffersCount,uint dateAdded) {
             bytes32 id = consumerScripts[consumer][index];
             
             Script memory script = allScripts[id];
-            uint pricePlusAdminFee = script.price + adminFee;
-            return(script.scriptId, script.status, pricePlusAdminFee, script.compound.formula,
-            script.compound.form, script.compound.quantity, 
+            return(script.scriptId, script.status, script.price, script.compound.formula,
+            script.compound.form, script.compound.daySupply, 
             script.priceCounterOffersCount, script.dateAdded);
     } 
     
@@ -135,12 +201,12 @@ contract MyMedMarket {
 
    function getPharmacyScript(address pharmacy, uint index) public view returns(bytes32 scriptId, 
             ScriptStatus status, uint price,  string memory formula,
-            bytes32 form, bytes32 quantity, uint dateAdded) {
+            bytes32 form, bytes32 daySupply, uint256 dateAdded) {
                 bytes32 id = pharmacyScripts[pharmacy][index];
                 Script memory script = allScripts[id];
                 
                 return(script.scriptId, script.status, script.price, script.compound.formula,
-                    script.compound.form, script.compound.quantity, script.dateAdded);
+                    script.compound.form, script.compound.daySupply, script.dateAdded);
     }
     
     function cancelScript(address consumer, bytes32 scriptId ) public {
