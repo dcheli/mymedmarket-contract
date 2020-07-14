@@ -3,7 +3,7 @@ const Tx = require('ethereumjs-tx');
 
 
 const options = {
-  defaultAccount: '0xcaa482cdf28f1f06a59082f2289cbbb24e97b0fb',
+  defaultAccount: '<put your public key here>',
   defaultBlock: 'latest',
   defaultGas: 1,
   defaultGasPrice: 0,
@@ -11,7 +11,7 @@ const options = {
   transactionConfirmationBlocks: 2, // 24
   transactionPollingTimeout: 480
 }
-const web3 = new Web3('https://rinkeby.infura.io/v3/f4d34a220a7b44e7a7d80d7db1e3a034', null, options);
+const web3 = new Web3('<put your rinkeby URL here>', null, options);
 const privateKey1 =  Buffer.from('<private key goes here>', 'hex'); // add your private key
 
 const compiledMyMedMarket = require('./build/MyMedMarket.json');
