@@ -12,7 +12,7 @@ const options = {
   transactionPollingTimeout: 480
 }
 const web3 = new Web3('https://rinkeby.infura.io/v3/f4d34a220a7b44e7a7d80d7db1e3a034', null, options);
-const privateKey1 =  Buffer.from('7B65F33CDDD7B26F29B7D247E865723981130723E8E659C0F8E0AD2050D0E8A4', 'hex'); // add your private key
+const privateKey1 =  Buffer.from('<private key goes here>', 'hex'); // add your private key
 
 const compiledMyMedMarket = require('./build/MyMedMarket.json');
 const account = web3.eth.defaultAccount;
